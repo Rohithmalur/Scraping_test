@@ -89,7 +89,9 @@ for container_number in container_numbers:
     driver.get(url)
     time.sleep(5)
 
-    # Accept cookie banner modal if present
+    time.sleep(2)
+
+    # Accept cookie banner modal if present (Run once per execution thread)
     if not cookie_accepted:
         try:
             allow_button = WebDriverWait(driver, 5).until(
@@ -101,21 +103,49 @@ for container_number in container_numbers:
         except Exception:
             pass
 
-    time.sleep(6)  # Standard loading buffer pause
+    # NEW: Wait for the actual tracking container data elements to load on screen
+    print("Waiting for tracking content data to render...")
+    try:
+        # Waits up to 20 seconds for the actual tracking status tracking sections to appear
+        WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.XPATH, "//*[contains(@class, 'tracking') or contains(@class, 'results') or contains(text(), 'Container')]"))
+        )
+        print("Data elements confirmed present in the DOM structure.")
+    except Exception:
+        print("Warning: Content element timeout reached. Proceeding with backup pause buffer...")
+        time.sleep(10) # Heavy buffer fallback if specific class doesn't trigger instantly
+
+    time.sleep(4)  # Final rest window for animations or lazy-loading to stop settling
+
+    # NEW: Remove print hide overrides that trigger empty pages on specific corporate templates
+    try:
+        driver.execute_script("""
+            var styles = document.querySelectorAll('style, link[rel="stylesheet"]');
+            for (var i = 0; i < styles.length; i++) {
+                if (styles[i].innerHTML.includes('@media print') || (styles[i].media && styles[i].media.includes('print'))) {
+                    styles[i].remove(); // Destroys print stylesheet blockers
+                }
+            }
+        """)
+    except Exception:
+        pass
 
     # Generate print snapshot via DevTools Protocol target
     pdf_filename = os.path.join(save_folder, f"{container_number}_{today_date}.pdf")
     try:
         pdf = driver.execute_cdp_cmd("Page.printToPDF", {
-            "printBackground": True,
-            "landscape": False
+            "printBackground": True, # Force background charts and colours to print
+            "landscape": False,
+            "displayHeaderFooter": False,
+            "preferCSSPageSize": True  # Force it to adhere to standard scaling layouts
         })
 
         with open(pdf_filename, "wb") as f:
             f.write(base64.b64decode(pdf['data']))
-        print(f"✅ PDF saved: {os.path.basename(pdf_filename)}")
+        print(f"✅ PDF successfully captured with content: {os.path.basename(pdf_filename)}")
     except Exception as e:
         print(f"❌ Failed to extract PDF print frame for {container_number}: {e}")
+
 
 print("\nClosing scraping driver browser instance...")
 driver.quit()
