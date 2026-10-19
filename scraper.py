@@ -112,7 +112,7 @@ for container_number in container_numbers:
     if not cookie_accepted:
         try:
             allow_button = WebDriverWait(driver, 7).until(
-                EC.element_to_be_clickable((By.橫向XPATH || By.XPATH, "//button[contains(., 'Allow all')]"))
+                EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Allow all')]"))
             )
             time.sleep(random.uniform(1.2, 2.5)) # Wait a brief moment before clicking like a human
             allow_button.click()
