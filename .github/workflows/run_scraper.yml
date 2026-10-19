@@ -33,3 +33,14 @@ jobs:
           # Expose the installed Chrome binary path directly to your Python script
           CHROME_BIN_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
         run: python scraper.py
+        
+      # NEW STEP: Upload the output files to GitHub before the server shuts down
+      - name: Upload Scraped Results
+        if: always() # Ensures files upload even if a single container fails halfway
+        uses: actions/upload-artifact@v4
+        with:
+          name: maersk-scraped-data # The name of your downloadable package
+          path: |
+            output_reports/
+            Scraped_Tracking_Data_*.csv
+          retention-days: 7 # Kept for 7 days for free download
