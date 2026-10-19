@@ -1,3 +1,4 @@
+import random # Add this at the top of your file!
 import fitz  # PyMuPDF
 import pandas as pd
 import re
@@ -59,7 +60,7 @@ print(f"Target workspace report folder created at: {save_folder}")
 # ==============================================================================
 # PHASE 2: SELENIUM WEB SCRAPING & PDF CAPTURE ENGINE (FORTIFIED)
 # ==============================================================================
-import random # Add this at the top of your file!
+#import random # Add this at the top of your file!
 base_url = "https://www.maersk.com/tracking/"
 
 print("\nStarting cloud headless chrome driver session container...")
