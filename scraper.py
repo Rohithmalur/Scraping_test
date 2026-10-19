@@ -64,13 +64,19 @@ base_url = "https://www.maersk.com/tracking/"
 print("\nStarting cloud headless chrome driver session container...")
 options = uc.ChromeOptions()
 options.add_argument("--headless=new")           # Required for cloud server deployments
-options.add_argument("--no-sandbox")              # Bypass OS security boundaries inside Docker
+options.add_argument("--no-sandbox")              # Bypass OS security boundaries
 options.add_argument("--disable-dev-shm-usage")   # Overcome shared memory resource restrictions
 options.add_argument("--window-size=1920,1080")
 
+# Read the Chrome binary path provided by GitHub Actions
+chrome_browser_path = os.environ.get("CHROME_BIN_PATH")
+
 try:
-    # Let UC handle version tracking automatically for stability
-    driver = uc.Chrome(options=options)
+    if chrome_browser_path:
+        print(f"Directing driver to Chrome binary at: {chrome_browser_path}")
+        driver = uc.Chrome(options=options, browser_executable_path=chrome_browser_path)
+    else:
+        driver = uc.Chrome(options=options)
 except Exception as browser_error:
     print(f"❌ Initialization failure starting Chromium: {browser_error}")
     exit()
