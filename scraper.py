@@ -87,7 +87,7 @@ for container_number in container_numbers:
     url = f"{base_url}{container_number}"
     print(f"\nNavigating to tracking target: {url}")
     driver.get(url)
-    time.sleep(2)
+    time.sleep(5)
 
     # Accept cookie banner modal if present
     if not cookie_accepted:
