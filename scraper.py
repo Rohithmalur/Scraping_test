@@ -57,16 +57,26 @@ print(f"Loaded {len(container_numbers)} container numbers successfully.")
 print(f"Target workspace report folder created at: {save_folder}")
 
 # ==============================================================================
-# PHASE 2: SELENIUM WEB SCRAPING & PDF CAPTURE ENGINE
+# PHASE 2: SELENIUM WEB SCRAPING & PDF CAPTURE ENGINE (FORTIFIED)
 # ==============================================================================
+import random # Add this at the top of your file!
 base_url = "https://www.maersk.com/tracking/"
 
 print("\nStarting cloud headless chrome driver session container...")
 options = uc.ChromeOptions()
-options.add_argument("--headless=new")           # Required for cloud server deployments
-options.add_argument("--no-sandbox")              # Bypass OS security boundaries
-options.add_argument("--disable-dev-shm-usage")   # Overcome shared memory resource restrictions
+options.add_argument("--headless=new")           
+options.add_argument("--no-sandbox")              
+options.add_argument("--disable-dev-shm-usage")   
+
+# 💥 ANTI-DETECTION TRICK 1: Spoof a real Windows Desktop identity
+options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+
+# 💥 ANTI-DETECTION TRICK 2: Pretend you have a real physical monitor display attached
 options.add_argument("--window-size=1920,1080")
+options.add_argument("--start-maximized")
+
+# Hide automation variables completely from structural canvas checks
+options.add_argument("--disable-blink-features=AutomationControlled")
 
 # Read the Chrome binary path provided by GitHub Actions
 chrome_browser_path = os.environ.get("CHROME_BIN_PATH")
@@ -79,7 +89,13 @@ try:
         driver = uc.Chrome(options=options)
 except Exception as browser_error:
     print(f"❌ Initialization failure starting Chromium: {browser_error}")
-    exit()
+    exit(1)
+
+# 💥 ANTI-DETECTION TRICK 3: Modify execution property fields via Chrome DevTools Protocol
+# This destroys remaining hidden automation parameters inside the execution memory layer
+driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+    "source": "Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});"
+})
 
 cookie_accepted = False
 
@@ -87,65 +103,41 @@ for container_number in container_numbers:
     url = f"{base_url}{container_number}"
     print(f"\nNavigating to tracking target: {url}")
     driver.get(url)
-    time.sleep(5)
+    
+    # 💥 ANTI-DETECTION TRICK 4: Mimic human loading delays
+    time.sleep(random.uniform(3.5, 6.2)) 
 
-    time.sleep(2)
-
-    # Accept cookie banner modal if present (Run once per execution thread)
+    # Accept cookie banner modal if present
     if not cookie_accepted:
         try:
-            allow_button = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Allow all')]"))
+            allow_button = WebDriverWait(driver, 7).until(
+                EC.element_to_be_clickable((By.橫向XPATH || By.XPATH, "//button[contains(., 'Allow all')]"))
             )
+            time.sleep(random.uniform(1.2, 2.5)) # Wait a brief moment before clicking like a human
             allow_button.click()
             cookie_accepted = True
             print("Tracking site cookie preferences accepted.")
         except Exception:
             pass
 
-    # NEW: Wait for the actual tracking container data elements to load on screen
-    print("Waiting for tracking content data to render...")
-    try:
-        # Waits up to 20 seconds for the actual tracking status tracking sections to appear
-        WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.XPATH, "//*[contains(@class, 'tracking') or contains(@class, 'results') or contains(text(), 'Container')]"))
-        )
-        print("Data elements confirmed present in the DOM structure.")
-    except Exception:
-        print("Warning: Content element timeout reached. Proceeding with backup pause buffer...")
-        time.sleep(10) # Heavy buffer fallback if specific class doesn't trigger instantly
-
-    time.sleep(4)  # Final rest window for animations or lazy-loading to stop settling
-
-    # NEW: Remove print hide overrides that trigger empty pages on specific corporate templates
-    try:
-        driver.execute_script("""
-            var styles = document.querySelectorAll('style, link[rel="stylesheet"]');
-            for (var i = 0; i < styles.length; i++) {
-                if (styles[i].innerHTML.includes('@media print') || (styles[i].media && styles[i].media.includes('print'))) {
-                    styles[i].remove(); // Destroys print stylesheet blockers
-                }
-            }
-        """)
-    except Exception:
-        pass
+    # Extended buffer window to give the dashboard widgets ample time to securely pull API payloads
+    print("Waiting for tracking content data to settle...")
+    time.sleep(random.uniform(8.0, 12.0))  
 
     # Generate print snapshot via DevTools Protocol target
     pdf_filename = os.path.join(save_folder, f"{container_number}_{today_date}.pdf")
     try:
         pdf = driver.execute_cdp_cmd("Page.printToPDF", {
-            "printBackground": True, # Force background charts and colours to print
+            "printBackground": True,
             "landscape": False,
-            "displayHeaderFooter": False,
-            "preferCSSPageSize": True  # Force it to adhere to standard scaling layouts
+            "preferCSSPageSize": True
         })
 
         with open(pdf_filename, "wb") as f:
             f.write(base64.b64decode(pdf['data']))
-        print(f"✅ PDF successfully captured with content: {os.path.basename(pdf_filename)}")
+        print(f"✅ PDF saved: {os.path.basename(pdf_filename)}")
     except Exception as e:
         print(f"❌ Failed to extract PDF print frame for {container_number}: {e}")
-
 
 print("\nClosing scraping driver browser instance...")
 driver.quit()
